@@ -37,13 +37,13 @@ Idx Name          Size      VMA       LMA       File off  Algn
                   CONTENTS, READONLY, DEBUGGING, OCTETS
  16 .debug_macro  0001a2bd  00000000  00000000  0003b350  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 17 .debug_line   0001576f  00000000  00000000  0005560d  2**0
+ 17 .debug_line   00015771  00000000  00000000  0005560d  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 18 .debug_str    0008e9ac  00000000  00000000  0006ad7c  2**0
+ 18 .debug_str    0008e9ac  00000000  00000000  0006ad7e  2**0
                   CONTENTS, READONLY, DEBUGGING, OCTETS
- 19 .comment      00000053  00000000  00000000  000f9728  2**0
+ 19 .comment      00000053  00000000  00000000  000f972a  2**0
                   CONTENTS, READONLY
- 20 .debug_frame  00005568  00000000  00000000  000f977c  2**2
+ 20 .debug_frame  00005568  00000000  00000000  000f9780  2**2
                   CONTENTS, READONLY, DEBUGGING, OCTETS
 
 Disassembly of section .text:
@@ -1118,15 +1118,16 @@ Disassembly of section .text:
  8000d42:	4770      	bx	lr
 
 08000d44 <DHT20_Read>:
-
-#include "dht20.h"
-
-extern I2C_HandleTypeDef hi2c1;
-
-void DHT20_Read(void) {
+/**
+ * @brief Reads temperature and humidity data from the DHT20 sensor via I2C.
+ * The raw 20-bit data is parsed and converted into standard physical units.
+ */
+void DHT20_Read(void)
+{
  8000d44:	b580      	push	{r7, lr}
  8000d46:	b088      	sub	sp, #32
  8000d48:	af02      	add	r7, sp, #8
+    // Initialization command sequence for the DHT20 sensor
     uint8_t cmd[3] = {0xAC, 0x33, 0x00};
  8000d4a:	4a42      	ldr	r2, [pc, #264]	; (8000e54 <DHT20_Read+0x110>)
  8000d4c:	f107 030c 	add.w	r3, r7, #12
@@ -1137,8 +1138,9 @@ void DHT20_Read(void) {
  8000d58:	0c12      	lsrs	r2, r2, #16
  8000d5a:	701a      	strb	r2, [r3, #0]
     uint8_t data[7];
-    // Gửi lệnh đo (0x70 là địa chỉ DHT20)
-    if(HAL_I2C_Master_Transmit(&hi2c1, 0x70 << 1, cmd, 3, 100) == HAL_OK) {
+
+    // Transmit measurement command to the sensor (I2C Address: 0x38, shifted left by 1 -> 0x70)
+    if(HAL_I2C_Master_Transmit(&hi2c1, 0x70 << 1, cmd, 3, 100) == HAL_OK)
  8000d5c:	f107 020c 	add.w	r2, r7, #12
  8000d60:	2364      	movs	r3, #100	; 0x64
  8000d62:	9300      	str	r3, [sp, #0]
@@ -1149,10 +1151,14 @@ void DHT20_Read(void) {
  8000d6e:	4603      	mov	r3, r0
  8000d70:	2b00      	cmp	r3, #0
  8000d72:	d16a      	bne.n	8000e4a <DHT20_Read+0x106>
-        HAL_Delay(80); // Chờ đo
+    {
+        // Allow the sensor sufficient time to complete environmental sampling
+        HAL_Delay(80);
  8000d74:	2050      	movs	r0, #80	; 0x50
  8000d76:	f000 fe01 	bl	800197c <HAL_Delay>
-        if(HAL_I2C_Master_Receive(&hi2c1, 0x70 << 1, data, 7, 100) == HAL_OK) {
+
+        // Retrieve 7 bytes of measurement data from the sensor
+        if(HAL_I2C_Master_Receive(&hi2c1, 0x70 << 1, data, 7, 100) == HAL_OK)
  8000d7a:	1d3a      	adds	r2, r7, #4
  8000d7c:	2364      	movs	r3, #100	; 0x64
  8000d7e:	9300      	str	r3, [sp, #0]
@@ -1163,11 +1169,15 @@ void DHT20_Read(void) {
  8000d8a:	4603      	mov	r3, r0
  8000d8c:	2b00      	cmp	r3, #0
  8000d8e:	d15c      	bne.n	8000e4a <DHT20_Read+0x106>
-            if ((data[0] & 0x80) == 0) {
+        {
+            // Check the status bit (bit 7 of data[0]) to ensure data readiness (0 = ready)
+            if ((data[0] & 0x80) == 0)
  8000d90:	793b      	ldrb	r3, [r7, #4]
  8000d92:	b25b      	sxtb	r3, r3
  8000d94:	2b00      	cmp	r3, #0
  8000d96:	db58      	blt.n	8000e4a <DHT20_Read+0x106>
+            {
+                // Concatenate byte segments to construct the 20-bit raw humidity value
                 uint32_t humi_raw = ((uint32_t)data[1] << 12) | ((uint32_t)data[2] << 4) | (data[3] >> 4);
  8000d98:	797b      	ldrb	r3, [r7, #5]
  8000d9a:	031a      	lsls	r2, r3, #12
@@ -1179,6 +1189,8 @@ void DHT20_Read(void) {
  8000da6:	b2d2      	uxtb	r2, r2
  8000da8:	4313      	orrs	r3, r2
  8000daa:	617b      	str	r3, [r7, #20]
+
+                // Concatenate byte segments to construct the 20-bit raw temperature value
                 uint32_t temp_raw = (((uint32_t)(data[3] & 0x0F)) << 16) | ((uint32_t)data[4] << 8) | data[5];
  8000dac:	79fb      	ldrb	r3, [r7, #7]
  8000dae:	041b      	lsls	r3, r3, #16
@@ -1189,6 +1201,8 @@ void DHT20_Read(void) {
  8000dba:	7a7a      	ldrb	r2, [r7, #9]
  8000dbc:	4313      	orrs	r3, r2
  8000dbe:	613b      	str	r3, [r7, #16]
+
+                // Convert raw digital values into physical units (Percentage and Celsius)
                 humi = ((float)humi_raw / 1048576.0) * 100.0;
  8000dc0:	6978      	ldr	r0, [r7, #20]
  8000dc2:	f7ff ff67 	bl	8000c94 <__aeabi_ui2f>
@@ -1263,43 +1277,47 @@ void DHT20_Read(void) {
  8000e70:	200001fc 	.word	0x200001fc
 
 08000e74 <LDR_Process>:
- *      Author: LENOVO
+/**
+ * @brief Processes the digital signal from the Light Dependent Resistor (LDR) module.
+ * Automatically toggles the designated lighting relay based on ambient brightness.
  */
-
-#include "ldr.h"
-
-void LDR_Process(void) {
+void LDR_Process(void)
+{
  8000e74:	b580      	push	{r7, lr}
  8000e76:	af00      	add	r7, sp, #0
-    // Đọc chân PA0
-    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET) {
+    // Poll the digital input state of the LDR sensor
+    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
  8000e78:	2101      	movs	r1, #1
  8000e7a:	480c      	ldr	r0, [pc, #48]	; (8000eac <LDR_Process+0x38>)
  8000e7c:	f001 fa48 	bl	8002310 <HAL_GPIO_ReadPin>
  8000e80:	4603      	mov	r3, r0
  8000e82:	2b01      	cmp	r3, #1
  8000e84:	d108      	bne.n	8000e98 <LDR_Process+0x24>
-        light_val = 1; // Tối
+    {
+        // High logic state indicates insufficient ambient light (Darkness)
+        light_val = 1;
  8000e86:	4b0a      	ldr	r3, [pc, #40]	; (8000eb0 <LDR_Process+0x3c>)
  8000e88:	2201      	movs	r2, #1
  8000e8a:	701a      	strb	r2, [r3, #0]
+
+        // Energize the lighting relay (Active Low configuration)
         HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
  8000e8c:	2200      	movs	r2, #0
  8000e8e:	2102      	movs	r1, #2
  8000e90:	4806      	ldr	r0, [pc, #24]	; (8000eac <LDR_Process+0x38>)
  8000e92:	f001 fa54 	bl	800233e <HAL_GPIO_WritePin>
-    } else {
-        light_val = 0; // Sáng
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);   // Tắt
-    }
+        light_val = 0;
 
+        // De-energize the lighting relay
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+    }
 }
  8000e96:	e007      	b.n	8000ea8 <LDR_Process+0x34>
-        light_val = 0; // Sáng
+        light_val = 0;
  8000e98:	4b05      	ldr	r3, [pc, #20]	; (8000eb0 <LDR_Process+0x3c>)
  8000e9a:	2200      	movs	r2, #0
  8000e9c:	701a      	strb	r2, [r3, #0]
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);   // Tắt
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
  8000e9e:	2201      	movs	r2, #1
  8000ea0:	2102      	movs	r1, #2
  8000ea2:	4802      	ldr	r0, [pc, #8]	; (8000eac <LDR_Process+0x38>)
@@ -3079,16 +3097,16 @@ void SystemInit (void)
  80017ba:	4770      	bx	lr
 
 080017bc <UART_SendData>:
-
-#include "uart_com.h"
-
-extern UART_HandleTypeDef huart1;
-
-void UART_SendData(void) {
+/**
+ * @brief Serializes the current environmental telemetry data into a JSON string
+ * and transmits it to the edge gateway via UART.
+ */
+void UART_SendData(void)
+{
  80017bc:	b5b0      	push	{r4, r5, r7, lr}
  80017be:	b084      	sub	sp, #16
  80017c0:	af04      	add	r7, sp, #16
-    // Đóng gói JSON mới (Không còn biến "mode")
+    // Format the sensory variables into a compact, standardized JSON payload
     sprintf(tx_buffer, "{\"temp\":%.1f,\"humi\":%.1f,\"light\":%d}\n",
  80017c2:	4b13      	ldr	r3, [pc, #76]	; (8001810 <UART_SendData+0x54>)
  80017c4:	681b      	ldr	r3, [r3, #0]
@@ -3113,6 +3131,7 @@ void UART_SendData(void) {
  80017f0:	f004 f906 	bl	8005a00 <siprintf>
             temp, humi, light_val);
 
+    // Dispatch the serialized payload via blocking UART transmission
     HAL_UART_Transmit(&huart1, (uint8_t*)tx_buffer, strlen(tx_buffer), 100);
  80017f4:	480a      	ldr	r0, [pc, #40]	; (8001820 <UART_SendData+0x64>)
  80017f6:	f7fe fcab 	bl	8000150 <strlen>
@@ -3135,36 +3154,44 @@ void UART_SendData(void) {
  8001824:	2000030c 	.word	0x2000030c
 
 08001828 <UART_ReceiveProcess>:
-
-void UART_ReceiveProcess(void) {
+/**
+ * @brief Processes incoming Remote Procedure Call (RPC) commands from the gateway.
+ * This function is invoked within the UART RX Complete Callback interrupt context.
+ */
+void UART_ReceiveProcess(void)
+{
  8001828:	b580      	push	{r7, lr}
  800182a:	af00      	add	r7, sp, #0
-    // ESP32 chỉ được quyền can thiệp vào IN4
-    if (rx_data == '4') {
+    // Parse the received byte to execute exclusive remote actuation commands
+    if (rx_data == '4')
  800182c:	4b0c      	ldr	r3, [pc, #48]	; (8001860 <UART_ReceiveProcess+0x38>)
  800182e:	781b      	ldrb	r3, [r3, #0]
  8001830:	2b34      	cmp	r3, #52	; 0x34
  8001832:	d105      	bne.n	8001840 <UART_ReceiveProcess+0x18>
-        HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET); // Bật IN4
+    {
+        // Command '4': Energize the server-controlled relay (IN4)
+        HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_RESET);
  8001834:	2200      	movs	r2, #0
  8001836:	2110      	movs	r1, #16
  8001838:	480a      	ldr	r0, [pc, #40]	; (8001864 <UART_ReceiveProcess+0x3c>)
  800183a:	f000 fd80 	bl	800233e <HAL_GPIO_WritePin>
  800183e:	e008      	b.n	8001852 <UART_ReceiveProcess+0x2a>
     }
-    else if (rx_data == '5') {
+    else if (rx_data == '5')
  8001840:	4b07      	ldr	r3, [pc, #28]	; (8001860 <UART_ReceiveProcess+0x38>)
  8001842:	781b      	ldrb	r3, [r3, #0]
  8001844:	2b35      	cmp	r3, #53	; 0x35
  8001846:	d104      	bne.n	8001852 <UART_ReceiveProcess+0x2a>
-        HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);   // Tắt IN4
+    {
+        // Command '5': De-energize the server-controlled relay (IN4)
+        HAL_GPIO_WritePin(IN4_GPIO_Port, IN4_Pin, GPIO_PIN_SET);
  8001848:	2201      	movs	r2, #1
  800184a:	2110      	movs	r1, #16
  800184c:	4805      	ldr	r0, [pc, #20]	; (8001864 <UART_ReceiveProcess+0x3c>)
  800184e:	f000 fd76 	bl	800233e <HAL_GPIO_WritePin>
     }
 
-    // Mở lại ngắt nhận UART
+    // Re-arm the non-blocking UART receive interrupt to listen for subsequent commands
     HAL_UART_Receive_IT(&huart1, &rx_data, 1);
  8001852:	2201      	movs	r2, #1
  8001854:	4902      	ldr	r1, [pc, #8]	; (8001860 <UART_ReceiveProcess+0x38>)

@@ -1,2 +1,2 @@
-uart_com.c:12:6:UART_SendData	32	static
-uart_com.c:20:6:UART_ReceiveProcess	8	static
+uart_com.c:16:6:UART_SendData	32	static
+uart_com.c:30:6:UART_ReceiveProcess	8	static

@@ -7,14 +7,27 @@
 
 #include "ldr.h"
 
-void LDR_Process(void) {
-    // Đọc chân PA0
-    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET) {
-        light_val = 1; // Tối
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
-    } else {
-        light_val = 0; // Sáng
-        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);   // Tắt
-    }
+/**
+ * @brief Processes the digital signal from the Light Dependent Resistor (LDR) module.
+ * Automatically toggles the designated lighting relay based on ambient brightness.
+ */
+void LDR_Process(void)
+{
+    // Poll the digital input state of the LDR sensor
+    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
+    {
+        // High logic state indicates insufficient ambient light (Darkness)
+        light_val = 1;
 
+        // Energize the lighting relay (Active Low configuration)
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_RESET);
+    }
+    else
+    {
+        // Low logic state indicates sufficient ambient light (Daylight)
+        light_val = 0;
+
+        // De-energize the lighting relay
+        HAL_GPIO_WritePin(GPIOA, GPIO_PIN_1, GPIO_PIN_SET);
+    }
 }
