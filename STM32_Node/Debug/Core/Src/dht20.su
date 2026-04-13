@@ -1,0 +1,2 @@
+dht20.c:12:6:DHT20_Read	40	static
+dht20.c:29:6:Environment_Process	8	static

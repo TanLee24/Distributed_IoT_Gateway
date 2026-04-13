@@ -1,24 +1,40 @@
 #include <Arduino.h>
+#include "global.h"
+#include "task_uart.h"
+#include "mqtt.h"
 
-#define RXD1 44
-#define TXD1 43
+void setup() {
+    Serial.begin(115200);
+    
+    Serial.println("=== ESP32-S3 RTOS GATEWAY ===");
 
-void setup() 
-{
-    // Serial này dùng để in lên màn hình máy tính (USB)
-    Serial.begin(115200); 
-    
-    // Serial1 dùng để đọc từ STM32
-    Serial1.begin(115200, SERIAL_8N1, RXD1, TXD1);
-    
-    Serial.println("Đang đợi dữ liệu từ STM32...");
+    // 1. Khởi tạo Ổ khóa Mutex
+    dataMutex = xSemaphoreCreateMutex();
+    if (dataMutex == NULL) {
+        Serial.println("Lỗi: Không tạo được Mutex!");
+        while (1); 
+    }
+
+    // 2. Tạo Task UART (Chạy trên Core 1 - Xử lý tính toán)
+    xTaskCreate(
+        Task_UART_Process,  // Tên hàm
+        "UART_Task",        // Tên gợi nhớ
+        4096,               // Kích thước RAM (Bytes)
+        NULL,               // Tham số truyền vào
+        1,                  // Độ ưu tiên (1-24)
+        NULL                // Con trỏ quản lý Tas
+    );
+
+    xTaskCreate(
+        Task_MQTT_Process,
+        "MQTT_Task",
+        8192,               
+        NULL,
+        1,                  
+        NULL
+    );
 }
 
 void loop() {
-    if (Serial1.available()) {
-    // Đọc từng ký tự từ STM32 và in thẳng lên màn hình
-    String data = Serial1.readStringUntil('\n');
-    Serial.print("Dữ liệu nhận được: ");
-    Serial.println(data);
-  }
+    vTaskDelete(NULL);
 }

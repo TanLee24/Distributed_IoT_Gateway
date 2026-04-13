@@ -1,7 +1,0 @@
-freertos.c:67:6:DHT20_Read	40	static
-freertos.c:85:10:LDR_Read	16	static
-freertos.c:109:6:vApplicationGetIdleTaskMemory	24	static
-freertos.c:123:6:MX_FREERTOS_Init	104	static
-freertos.c:170:6:StartDefaultTask	16	static
-freertos.c:188:6:taskSensors	16	static
-freertos.c:208:6:taskCommunication	144	static
