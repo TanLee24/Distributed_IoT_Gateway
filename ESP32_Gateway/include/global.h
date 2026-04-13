@@ -5,15 +5,16 @@
 #include <freertos/FreeRTOS.h>
 #include <freertos/semphr.h>
 
-// Cấu trúc gom toàn bộ dữ liệu hệ thống
-struct SensorData {
+// The struct aggregates all system data
+struct SensorData 
+{
     float temp;
     float humi;
     int light;
 };
 
-// Khai báo extern để các file khác gọi được
+// Declare extern so that other files can call it.
 extern SensorData sharedData;
-extern SemaphoreHandle_t dataMutex; // Ổ khóa Mutex
+extern SemaphoreHandle_t dataMutex; // Mutex lock
 
 #endif

@@ -6,71 +6,71 @@
 ![FreeRTOS](https://img.shields.io/badge/OS-FreeRTOS-green.svg)
 ![ThingsBoard](https://img.shields.io/badge/Cloud-ThingsBoard-0f2c5e.svg)
 
-## 📖 Giới thiệu Dự án
-Hệ thống Smart Home IoT phân tán (Distributed System) được thiết kế nhằm chia tách rõ ràng nhiệm vụ giữa phần cứng điều khiển cấp thấp (Edge) và viễn thông mạng (Gateway). Hệ thống đảm bảo tính an toàn, phản hồi theo thời gian thực (real-time) và khả năng giám sát, điều khiển từ xa thông qua giao thức MQTT.
+## 📖 Project Overview
+This Distributed IoT Smart Home System is architected to explicitly decouple low-level hardware execution (Edge Node) from network communication and cloud integration (Gateway). The system guarantees fail-safe deterministic operation, real-time responsiveness, and remote monitoring/control capabilities via the MQTT protocol.
 
-Dự án được xây dựng trên sự kết hợp giữa **STM32** (chạy Bare-metal/Super-loop) và **ESP32-S3 YOLO UNO** (chạy hệ điều hành FreeRTOS).
-
----
-
-## 🏗️ Kiến trúc Hệ thống (System Architecture)
-
-Hệ thống được chia làm hai phân hệ chính, giao tiếp với nhau thông qua UART (JSON định dạng):
-
-### 1. STM32 Edge Node (Quản lý Phần cứng)
-* **Hoạt động cục bộ (Deterministic Automation):** Liên tục đọc dữ liệu từ cảm biến nhiệt độ, độ ẩm (DHT20 qua I2C) và cảm biến ánh sáng (LDR qua GPIO).
-* **Xử lý logic tự động:** Trực tiếp đóng/cắt Relay (IN1, IN2, IN3) dựa trên các ngưỡng môi trường (VD: Nhiệt độ > 32°C bật quạt, trời tối bật đèn) độc lập hoàn toàn với kết nối mạng.
-* **Ngắt UART (Interrupt-based):** Luôn sẵn sàng nhận lệnh từ ESP32 để điều khiển kênh Relay đặc quyền (IN4).
-
-### 2. ESP32-S3 Gateway (Quản lý Đa luồng & Cloud)
-* **FreeRTOS Task Management:** Sử dụng kiến trúc đa luồng để chạy song song Task đọc UART và Task kết nối MQTT. Các Task chia sẻ dữ liệu an toàn thông qua **Mutex (Semaphore)**.
-* **Luồng Telemetry (Viễn trắc):** Nhận gói JSON từ STM32, bóc tách và đẩy dữ liệu môi trường (Nhiệt độ, Độ ẩm, Ánh sáng) lên máy chủ ThingsBoard.
-* **Luồng RPC (Remote Procedure Call):** Lắng nghe lệnh từ Web Dashboard. Khi người dùng nhấn nút, ESP32 sẽ bắt lệnh RPC và gửi tín hiệu (`'4'` hoặc `'5'`) qua UART để ép STM32 đóng/cắt kênh IN4.
+The project leverages the combined processing power of an **STM32** microcontroller (running a Bare-metal Super-loop) and an **ESP32-S3 YOLO UNO** board (running FreeRTOS).
 
 ---
 
-## 🛠️ Công nghệ & Giao thức
+## 🏗️ System Architecture
 
-* **Ngôn ngữ:** C / C++
-* **Hệ điều hành:** FreeRTOS (Task, Mutex)
-* **Môi trường phát triển:** STM32CubeIDE (STM32 HAL), VS Code + PlatformIO (Arduino framework)
-* **Giao thức truyền thông:** I2C, UART, MQTT, WiFi
+The system is divided into two primary subsystems, communicating continuously via a JSON-over-UART protocol:
+
+### 1. STM32 Edge Node (Hardware Manager)
+* **Deterministic Local Automation:** Continuously acquires data from temperature/humidity sensors (DHT20 via I2C) and a light sensor (LDR via Digital Input).
+* **Autonomous Logic Execution:** Directly controls solid-state/mechanical Relays (IN1, IN2, IN3) based on environmental thresholds (e.g., triggering a fan if Temp > 32°C, or turning on lights when dark) completely independent of network connectivity.
+* **Interrupt-Driven UART:** Constantly listens for incoming commands from the ESP32 Gateway to control the exclusive Server-Side RPC Relay (IN4) without blocking the main loop.
+
+### 2. ESP32-S3 Gateway (Concurrent Task & Cloud Manager)
+* **FreeRTOS Task Management:** Utilizes a multi-threaded architecture to run UART processing and MQTT network handling concurrently. Data integrity between tasks is strictly maintained using **Mutexes (Semaphores)**.
+* **Telemetry Streaming (Uplink):** Parses the JSON payload from the STM32 and publishes environmental data (Temperature, Humidity, Light State) to the ThingsBoard Cloud platform.
+* **Server-Side RPC (Downlink):** Subscribes to the RPC topic from the Web Dashboard. Upon receiving a user-triggered command, the ESP32 captures the RPC request and transmits the corresponding actuation signal (`'4'` or `'5'`) via UART to force the STM32 to toggle the IN4 Relay.
+
+---
+
+## 🛠️ Technologies & Protocols
+
+* **Languages:** C / C++
+* **Operating System:** FreeRTOS (Tasks, Mutexes)
+* **Development Environments:** STM32CubeIDE (STM32 HAL), VS Code + PlatformIO (Arduino Framework)
+* **Communication Protocols:** I2C, UART, MQTT, Wi-Fi
 * **IoT Platform:** ThingsBoard (Telemetry & Server-Side RPC)
-* **Định dạng dữ liệu:** JSON (ArduinoJson)
+* **Data Serialization:** JSON (ArduinoJson)
 
 ---
 
-## 🔌 Sơ đồ nối dây (Pinout & Wiring)
+## 🔌 Pinout & Wiring Diagram
 
-| Thiết bị / Module | Chân STM32 | Chân ESP32-S3 | Ghi chú |
+| Component / Module | STM32 Pin | ESP32-S3 Pin | Notes |
 | :--- | :--- | :--- | :--- |
-| **Giao tiếp UART** | PA9 (TX) | D9 / GPIO 18 (RX) | Giao tiếp 2 chiều (Baudrate 9600) |
-| **Giao tiếp UART** | PA10 (RX) | D8 / GPIO 17 (TX) | Giao tiếp 2 chiều |
-| **GND Chung** | GND | GND | **Bắt buộc** để đồng bộ điện áp |
-| **Cảm biến DHT20**| PB6 (SCL), PB7 (SDA) | - | Nguồn 3.3V cấp từ ESP32 |
-| **Cảm biến LDR** | PA0 (Digital Read) | - | - |
-| **Module Relay** | PA1, PA2, PA3, PA4 | - | Điều khiển IN1, IN2, IN3, IN4 |
+| **UART TX/RX** | PA9 (TX) | D9 / GPIO 18 (RX) | Bi-directional communication (Baudrate: 9600) |
+| **UART RX/TX** | PA10 (RX) | D8 / GPIO 17 (TX) | Bi-directional communication |
+| **Common Ground** | GND | GND | **Mandatory** for voltage level synchronization |
+| **DHT20 Sensor**| PB6 (SCL), PB7 (SDA) | - | 3.3V Power supplied from ESP32 |
+| **LDR Sensor** | PA0 (Digital IN) | - | - |
+| **Relay Module** | PA1, PA2, PA3, PA4 | - | Controls IN1, IN2, IN3, IN4 |
 
 ---
 
-## 📁 Cấu trúc Thư mục
+## 📁 Directory Structure
 
 ```text
 📦 Distributed_IoT_Gateway
- ┣ 📂 ESP32_Gateway        # Mã nguồn Gateway (PlatformIO)
+ ┣ 📂 ESP32_Gateway        # Gateway Source Code (PlatformIO)
  ┃ ┣ 📂 src
- ┃ ┃ ┣ 📜 main.cpp         # Khởi tạo FreeRTOS Mutex & Tasks
- ┃ ┃ ┣ 📜 global.cpp       # Biến chia sẻ toàn cục
- ┃ ┃ ┣ 📜 task_uart.cpp    # Task đọc/giải mã JSON từ UART
- ┃ ┃ ┗ 📜 task_mqtt.cpp    # Task kết nối WiFi, gửi Telemetry & nhận RPC
- ┃ ┣ 📜 platformio.ini     # Cấu hình board và thư viện (PubSubClient, ArduinoJson)
+ ┃ ┃ ┣ 📜 main.cpp         # FreeRTOS Mutex & Task Initialization
+ ┃ ┃ ┣ 📜 global.cpp       # Global shared variables
+ ┃ ┃ ┣ 📜 task_uart.cpp    # Task: Read/Deserialize JSON from UART
+ ┃ ┃ ┗ 📜 task_mqtt.cpp    # Task: Wi-Fi/MQTT connection, Telemetry & RPC
+ ┃ ┣ 📜 platformio.ini     # Board & Library configurations (PubSubClient, ArduinoJson)
  ┃ ┗ 📂 include
- ┣ 📂 STM32_Node           # Mã nguồn Edge Node (STM32CubeIDE)
+ ┣ 📂 STM32_Node           # Edge Node Source Code (STM32CubeIDE)
  ┃ ┣ 📂 Core
  ┃ ┃ ┣ 📂 Src
- ┃ ┃ ┃ ┣ 📜 main.c         # Super-loop & Hardware Timers
- ┃ ┃ ┃ ┣ 📜 dht20.c        # Thư viện I2C DHT20
- ┃ ┃ ┃ ┣ 📜 ldr.c          # Xử lý tự động hóa môi trường
- ┃ ┃ ┃ ┗ 📜 uart_com.c     # Đóng gói JSON & Xử lý ngắt nhận lệnh RPC
+ ┃ ┃ ┃ ┣ 📜 main.c         # Super-loop & Hardware Timer Callbacks
+ ┃ ┃ ┃ ┣ 📜 dht20.c        # DHT20 I2C Driver
+ ┃ ┃ ┃ ┣ 📜 ldr.c          # Local environmental automation logic
+ ┃ ┃ ┃ ┗ 📜 uart_com.c     # JSON Serialization & UART RX Interrupt handler
  ┃ ┃ ┗ 📂 Inc
- ┃ ┗ 📜 STM32_Node.ioc     # File cấu hình CubeMX (Timer 2, UART 1 Interrupts)
+ ┃ ┗ 📜 STM32_Node.ioc     # CubeMX Configuration (Timer 2, USART1 Interrupts)
