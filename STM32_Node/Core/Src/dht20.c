@@ -20,13 +20,13 @@ void DHT20_Read(void)
     uint8_t data[7];
 
     // Transmit measurement command to the sensor (I2C Address: 0x38, shifted left by 1 -> 0x70)
-    if(HAL_I2C_Master_Transmit(&hi2c1, 0x70 << 1, cmd, 3, 100) == HAL_OK)
+    if(HAL_I2C_Master_Transmit(&hi2c1, 0x70, cmd, 3, 100) == HAL_OK)
     {
         // Allow the sensor sufficient time to complete environmental sampling
         HAL_Delay(80);
 
         // Retrieve 7 bytes of measurement data from the sensor
-        if(HAL_I2C_Master_Receive(&hi2c1, 0x70 << 1, data, 7, 100) == HAL_OK)
+        if(HAL_I2C_Master_Receive(&hi2c1, 0x70, data, 7, 100) == HAL_OK)
         {
             // Check the status bit (bit 7 of data[0]) to ensure data readiness (0 = ready)
             if ((data[0] & 0x80) == 0)
@@ -63,7 +63,7 @@ void Environment_Process(void)
 
     // Humidity threshold evaluation: Activate humidifier (IN3) if humidity drops below 60%
     // Guard condition (humi > 0.0) prevents false triggering on sensor read failures
-    if (humi > 0.0 && humi < 60.0)
+    if (humi > 0.0 && humi < 75.0)
     {
         HAL_GPIO_WritePin(IN3_GPIO_Port, IN3_Pin, GPIO_PIN_RESET); // Energize relay (Active Low)
     }

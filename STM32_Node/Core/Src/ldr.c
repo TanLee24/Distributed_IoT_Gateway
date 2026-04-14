@@ -14,7 +14,7 @@
 void LDR_Process(void)
 {
     // Poll the digital input state of the LDR sensor
-    if(HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0) == GPIO_PIN_SET)
+    if(HAL_GPIO_ReadPin(DO_GPIO_Port, DO_Pin) == GPIO_PIN_SET)
     {
         // High logic state indicates insufficient ambient light (Darkness)
         light_val = 1;

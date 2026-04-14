@@ -136,6 +136,7 @@ int main(void)
 	  if(isTimeExpired(1))
 	  {
 		  DHT20_Read();
+		  Environment_Process();
 		  UART_SendData();
 		  setTimer(1, 200);
 	  }
@@ -337,18 +338,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(LED_RED_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : DO_Pin */
-  GPIO_InitStruct.Pin = DO_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
-  HAL_GPIO_Init(DO_GPIO_Port, &GPIO_InitStruct);
-
   /*Configure GPIO pins : IN1_Pin IN2_Pin IN3_Pin IN4_Pin */
   GPIO_InitStruct.Pin = IN1_Pin|IN2_Pin|IN3_Pin|IN4_Pin;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : DO_Pin */
+  GPIO_InitStruct.Pin = DO_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
+  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  HAL_GPIO_Init(DO_GPIO_Port, &GPIO_InitStruct);
 
 }
 
